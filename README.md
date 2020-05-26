@@ -1,6 +1,6 @@
-# ロットロット
+# 割ルパズル
 
-**ロットロット**はAcashicEngineとTypeScriptにより作られたニコニコ生放送向けゲームです。
+**割ルパズル**はAcashicEngineとTypeScriptにより作られたニコニコ生放送向けゲームです。
 
 ## 利用方法
 
