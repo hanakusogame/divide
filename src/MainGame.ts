@@ -158,12 +158,14 @@ export class MainGame extends g.E {
 		const mate = () => {
 			//詰みチェック
 			let isMate = true;
+			let arr:Panel[] = [];
 			for (let y = 1; y < maps.length - 1; y++) {
 				for (let x = 1; x < maps[y].length - 1; x++) {
 					if (!maps[y][x].tag) {
 						isMate = false;
 						break;
 					}
+					arr.push(maps[y][x].tag);
 				}
 				if (!isMate) break;
 			}
@@ -173,10 +175,18 @@ export class MainGame extends g.E {
 
 				scene.addScore(-3000);
 
+				timeline.create().every((a: number, b: number) => {
+					const p = arr[Math.floor((arr.length - 1) * b)];
+					if (p.frameNumber === 0) {
+						p.frameNumber = 2;
+						p.modified();
+					}
+				},1000);
+
 				scene.setTimeout(() => {
 					sprMate.hide();
 					start();
-				}, 1000);
+				}, 2500);
 
 				scene.playSound("biri");
 			} else {
@@ -306,7 +316,17 @@ export class MainGame extends g.E {
 
 				//クリックイベント
 				panel.pointDown.add(() => {
-					if (panel.tag != undefined || isStop || !scene.isStart) return;
+					if (isStop || !scene.isStart) return;
+					
+					if (panel.tag != undefined) {
+						scene.addScore(-100);
+						const p = panel.tag as Panel;
+						p.frameNumber = 2;
+						p.modified();
+						scene.playSound("se_miss");
+						return;
+					}
+
 					const p: Panel = areas[nowPanelNum].tag;
 					panel.tag = p;
 
@@ -336,7 +356,18 @@ export class MainGame extends g.E {
 					scene.playSound("se_move");
 
 				});
+
+				panel.pointUp.add(() => {
+					if (isStop || !scene.isStart) return;
+					if (panel.tag != undefined) {
+						const p = panel.tag as Panel;
+						p.frameNumber = 0;
+						p.modified();
+						return;
+					}
+				});
 			}
+			
 		}
 
 		//枠
@@ -533,7 +564,7 @@ class Panel extends g.FrameSprite {
 			scene: scene,
 			width: panelSize,
 			height: panelSize,
-			frames: [0, 1],
+			frames: [0, 1,2],
 			src: scene.assets["panel"] as g.ImageAsset
 		});
 
@@ -553,7 +584,9 @@ class Panel extends g.FrameSprite {
 		//数字セット
 		this.setNum = (num: number) => {
 			if (num != 1) {
+				this.frameNumber = 0;
 				this.num = num;
+				this.modified();
 				label.text = "" + num;
 				label.invalidate();
 				this.show();//いまいち

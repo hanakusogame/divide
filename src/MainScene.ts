@@ -23,7 +23,7 @@ export class MainScene extends g.Scene {
 			"img_numbers_n", "img_numbers_n_red", "title", "start", "finish", "score", "time",
 			"panel","map","waku","cursor","combo","keep",
 			"config", "volume", "test", "glyph72","number_k", "number_b", "number_y", "number_p",
-			"se_start", "se_timeup", "bgm", "se_move", "se_miss","se_hit",
+			"se_start", "se_timeup", "bgm", "se_move", "se_miss","se_hit","se_miss"
 			"biri"];
 		super(param);
 
@@ -281,7 +281,7 @@ export class MainScene extends g.Scene {
 
 					this.playSound("se_timeup");
 
-					timeline.create().wait(1500).call(() => {
+					timeline.create().wait(2500).call(() => {
 						if (typeof window !== "undefined" && window.RPGAtsumaru) {
 							window.RPGAtsumaru.experimental.scoreboards.setRecord(1, g.game.vars.gameState.score).then(() => {
 								btnRanking.show();

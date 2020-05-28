@@ -150,12 +150,14 @@ var MainGame = /** @class */ (function (_super) {
         var mate = function () {
             //詰みチェック
             var isMate = true;
+            var arr = [];
             for (var y = 1; y < maps.length - 1; y++) {
                 for (var x = 1; x < maps[y].length - 1; x++) {
                     if (!maps[y][x].tag) {
                         isMate = false;
                         break;
                     }
+                    arr.push(maps[y][x].tag);
                 }
                 if (!isMate)
                     break;
@@ -163,10 +165,17 @@ var MainGame = /** @class */ (function (_super) {
             if (isMate) {
                 sprMate.show();
                 scene.addScore(-3000);
+                timeline.create().every(function (a, b) {
+                    var p = arr[Math.floor((arr.length - 1) * b)];
+                    if (p.frameNumber === 0) {
+                        p.frameNumber = 2;
+                        p.modified();
+                    }
+                }, 1000);
                 scene.setTimeout(function () {
                     sprMate.hide();
                     start();
-                }, 1000);
+                }, 2500);
                 scene.playSound("biri");
             }
             else {
@@ -279,8 +288,16 @@ var MainGame = /** @class */ (function (_super) {
                 }
                 //クリックイベント
                 panel.pointDown.add(function () {
-                    if (panel.tag != undefined || isStop || !scene.isStart)
+                    if (isStop || !scene.isStart)
                         return;
+                    if (panel.tag != undefined) {
+                        scene.addScore(-100);
+                        var p_1 = panel.tag;
+                        p_1.frameNumber = 2;
+                        p_1.modified();
+                        scene.playSound("se_miss");
+                        return;
+                    }
                     var p = areas[nowPanelNum].tag;
                     panel.tag = p;
                     isStop = true;
@@ -307,6 +324,16 @@ var MainGame = /** @class */ (function (_super) {
                         next();
                     }
                     scene.playSound("se_move");
+                });
+                panel.pointUp.add(function () {
+                    if (isStop || !scene.isStart)
+                        return;
+                    if (panel.tag != undefined) {
+                        var p = panel.tag;
+                        p.frameNumber = 0;
+                        p.modified();
+                        return;
+                    }
                 });
             };
             for (var x = 0; x < 6; x++) {
@@ -490,7 +517,7 @@ var Panel = /** @class */ (function (_super) {
             scene: scene,
             width: panelSize,
             height: panelSize,
-            frames: [0, 1],
+            frames: [0, 1, 2],
             src: scene.assets["panel"]
         }) || this;
         _this.num = 0;
@@ -509,7 +536,9 @@ var Panel = /** @class */ (function (_super) {
         //数字セット
         _this.setNum = function (num) {
             if (num != 1) {
+                _this.frameNumber = 0;
                 _this.num = num;
+                _this.modified();
                 label.text = "" + num;
                 label.invalidate();
                 _this.show(); //いまいち
