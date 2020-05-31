@@ -33,7 +33,7 @@ export class MainGame extends g.E {
 				}
 			}
 		}
-		console.log(arrNum);
+		//console.log(arrNum);
 
 		const base = new g.E({ scene: scene });
 		this.append(base);
@@ -97,8 +97,6 @@ export class MainGame extends g.E {
 		});
 		base.append(sprCursor);
 
-
-
 		//エフェクト
 		const effects: Effect[] = [];
 		for (let i = 0; i < 10; i++) {
@@ -158,7 +156,7 @@ export class MainGame extends g.E {
 		const mate = () => {
 			//詰みチェック
 			let isMate = true;
-			let arr:Panel[] = [];
+			let arr: Panel[] = [];
 			for (let y = 1; y < maps.length - 1; y++) {
 				for (let x = 1; x < maps[y].length - 1; x++) {
 					if (!maps[y][x].tag) {
@@ -181,7 +179,7 @@ export class MainGame extends g.E {
 						p.frameNumber = 2;
 						p.modified();
 					}
-				},1000);
+				}, 1000);
 
 				scene.setTimeout(() => {
 					sprMate.hide();
@@ -234,9 +232,9 @@ export class MainGame extends g.E {
 					panelCnt++;
 
 					if (panelCnt <= 2) {
-						score += 200 * comboCnt;
+						score += 400 * ((comboCnt+1) * (comboCnt/4));
 					} else {
-						score += (200 + ((panelCnt - 2) * 40)) * comboCnt;
+						score += (400 + (panelCnt - 2) * 40) * ((comboCnt+1) * (comboCnt/4));
 					}
 
 				}
@@ -272,6 +270,13 @@ export class MainGame extends g.E {
 			} else {
 				scene.addScore(score);
 				mate();
+
+				if (advancePos) {
+					move(maps[advancePos.y][advancePos.x]);
+					advancePos = undefined;
+				} else {
+					cursorArea.hide();
+				}
 			}
 		}
 
@@ -296,12 +301,78 @@ export class MainGame extends g.E {
 			area.tag = np;
 		}
 
+		//先行入力用
+		let advancePos: { x: number, y: number }
+
+		//先行入力場所表示用
+		const cursorArea = new g.FilledRect({
+			scene: scene,
+			width: panelSize,
+			height: panelSize,
+			cssColor: "white",
+			opacity:0.5
+		});
+		cursorArea.hide();
+
+		const move = (panel: g.Sprite) => {
+			const area = areas[nowPanelNum];
+			const p: Panel = areas[nowPanelNum].tag;
+			panel.tag = p;
+
+			isStop = true;
+			//timeline.create(p).moveTo(panel.x, panel.y, 180).wait(200).call(() => {
+			p.angle = 7;
+			p.modified();
+
+			shadow.moveTo(p.x, p.y);
+			base.append(shadow);
+
+			base.append(p);
+
+			timeline.create(shadow).moveTo(panel.x,panel.y,400).con().every((a: number, b: number) => {
+				p.x = panel.x + (area.x - panel.x) * (1 - b);
+				const y = Math.pow((1 - ((Math.abs(b - 0.5)) * 2)), 0.5) * -100;
+				p.y = panel.y + (area.y - panel.y) * (1 - b) + y;
+				p.modified();
+			}, 500, tl.Easing.easeInOutQubic).call(() => {
+				p.angle = 0;
+				p.modified();
+			}).wait(200).call(() => {
+				comboCnt = 1;
+				score = 0;
+				const d = chkDivide();
+				if (d.flg) {
+					scene.setTimeout(() => {
+						divide(d.list);
+					}, 200);
+				} else {
+					mate();
+
+					if (advancePos) {
+						move(maps[advancePos.y][advancePos.x]);
+						advancePos = undefined;
+					}
+				}
+			});
+
+			//手札をずらす
+			if (nowPanelNum === 0) {
+				nowPanelNum = 1;
+				sprCursor.y = areas[nowPanelNum].y - 5;
+				areas[0].tag = undefined;
+			} else {
+				next();
+			}
+
+			scene.playSound("se_move");
+		}
+
 		//盤面
 		const maps: g.Sprite[][] = [];
 		for (let y = 0; y < 6; y++) {
 			maps[y] = [];
 			for (let x = 0; x < 6; x++) {
-				const panel = new g.Sprite({
+				const map = new g.Sprite({
 					scene: scene,
 					x: panelSize * x + 0,
 					y: panelSize * y - 60,
@@ -309,66 +380,54 @@ export class MainGame extends g.E {
 					touchable: true
 				});
 
-				maps[y][x] = panel;
+				maps[y][x] = map;
 				if (x > 0 && y > 0 && x < 5 && y < 5) {
-					base.append(panel);
+					base.append(map);
 				}
 
 				//クリックイベント
-				panel.pointDown.add(() => {
-					if (isStop || !scene.isStart) return;
-					
-					if (panel.tag != undefined) {
+				map.pointDown.add(() => {
+					if (!scene.isStart) return;
+
+					if (map.tag != undefined) {
+						//減点
+						/*
 						scene.addScore(-100);
-						const p = panel.tag as Panel;
+						const p = map.tag as Panel;
 						p.frameNumber = 2;
 						p.modified();
 						scene.playSound("se_miss");
+						*/
 						return;
 					}
 
-					const p: Panel = areas[nowPanelNum].tag;
-					panel.tag = p;
+					cursorArea.moveTo(map.x, map.y);
+					cursorArea.show();
+					cursorArea.modified();
 
-					isStop = true;
-					timeline.create(p).moveTo(panel.x, panel.y, 180).wait(200).call(() => {
-						comboCnt = 1;
-						score = 0;
-						const d = chkDivide();
-						if (d.flg) {
-							scene.setTimeout(() => {
-								divide(d.list);
-							}, 200);
-						} else {
-							mate();
-						}
-					});
-
-					//手札をずらす
-					if (nowPanelNum === 0) {
-						nowPanelNum = 1;
-						sprCursor.y = areas[nowPanelNum].y - 5;
-						areas[0].tag = undefined;
+					if (isStop) {
+						//先行入力
+						advancePos = { x: x, y: y }
 					} else {
-						next();
+						move(map);
 					}
-
-					scene.playSound("se_move");
 
 				});
 
-				panel.pointUp.add(() => {
+				map.pointUp.add(() => {
 					if (isStop || !scene.isStart) return;
-					if (panel.tag != undefined) {
-						const p = panel.tag as Panel;
+					if (map.tag != undefined) {
+						const p = map.tag as Panel;
 						p.frameNumber = 0;
 						p.modified();
 						return;
 					}
 				});
 			}
-			
+
 		}
+
+		base.append(cursorArea);//重ね順の関係でここでアペンド
 
 		//枠
 		const waku = new g.Sprite({
@@ -387,6 +446,17 @@ export class MainGame extends g.E {
 			panels_bk[i] = panel;
 		}
 
+		//影
+		const shadow = new g.Sprite({
+			scene: scene,
+			src: scene.assets["panel"],
+			width: panelSize,
+			height: panelSize,
+			srcX:panelSize,
+			srcY: panelSize,
+			opacity:0.1
+		});
+
 		//消したパネルの数
 		const sprNum = new g.Sprite({
 			scene: scene,
@@ -394,8 +464,8 @@ export class MainGame extends g.E {
 			width: 108,
 			height: 40,
 			srcY: 0,
-			x: 210,
-			y: 50
+			x: 560,
+			y: 130,
 		});
 		this.append(sprNum);
 		sprNum.hide();
@@ -416,8 +486,8 @@ export class MainGame extends g.E {
 			width: 108,
 			height: 40,
 			srcY: 40,
-			x: 210,
-			y: 100
+			x: 560,
+			y: 180
 		});
 		this.append(sprCombo);
 		sprCombo.hide();
@@ -490,6 +560,11 @@ export class MainGame extends g.E {
 				base.append(panel);
 				p.tag = panel;
 			}
+
+			advancePos = undefined;
+			cursorArea.hide();
+
+			if(shadow.parent)shadow.remove();
 
 			isStop = false;
 		}
@@ -564,7 +639,7 @@ class Panel extends g.FrameSprite {
 			scene: scene,
 			width: panelSize,
 			height: panelSize,
-			frames: [0, 1,2],
+			frames: [0, 1, 2],
 			src: scene.assets["panel"] as g.ImageAsset
 		});
 

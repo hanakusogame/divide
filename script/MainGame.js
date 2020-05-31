@@ -36,7 +36,7 @@ var MainGame = /** @class */ (function (_super) {
                 }
             }
         }
-        console.log(arrNum);
+        //console.log(arrNum);
         var base = new g.E({ scene: scene });
         _this.append(base);
         //手札を置く場所
@@ -216,10 +216,10 @@ var MainGame = /** @class */ (function (_super) {
                     panel.modified();
                     panelCnt++;
                     if (panelCnt <= 2) {
-                        score += 200 * comboCnt;
+                        score += 400 * ((comboCnt + 1) * (comboCnt / 4));
                     }
                     else {
-                        score += (200 + ((panelCnt - 2) * 40)) * comboCnt;
+                        score += (400 + (panelCnt - 2) * 40) * ((comboCnt + 1) * (comboCnt / 4));
                     }
                 }
             }
@@ -250,6 +250,13 @@ var MainGame = /** @class */ (function (_super) {
             else {
                 scene.addScore(score);
                 mate();
+                if (advancePos) {
+                    move(maps[advancePos.y][advancePos.x]);
+                    advancePos = undefined;
+                }
+                else {
+                    cursorArea.hide();
+                }
             }
         };
         //手札をずらす
@@ -270,66 +277,111 @@ var MainGame = /** @class */ (function (_super) {
             base.append(np);
             area.tag = np;
         };
+        //先行入力用
+        var advancePos;
+        //先行入力場所表示用
+        var cursorArea = new g.FilledRect({
+            scene: scene,
+            width: panelSize,
+            height: panelSize,
+            cssColor: "white",
+            opacity: 0.5
+        });
+        cursorArea.hide();
+        var move = function (panel) {
+            var area = areas[nowPanelNum];
+            var p = areas[nowPanelNum].tag;
+            panel.tag = p;
+            isStop = true;
+            //timeline.create(p).moveTo(panel.x, panel.y, 180).wait(200).call(() => {
+            p.angle = 7;
+            p.modified();
+            shadow.moveTo(p.x, p.y);
+            base.append(shadow);
+            base.append(p);
+            timeline.create(shadow).moveTo(panel.x, panel.y, 400).con().every(function (a, b) {
+                p.x = panel.x + (area.x - panel.x) * (1 - b);
+                var y = Math.pow((1 - ((Math.abs(b - 0.5)) * 2)), 0.5) * -100;
+                p.y = panel.y + (area.y - panel.y) * (1 - b) + y;
+                p.modified();
+            }, 500, tl.Easing.easeInOutQubic).call(function () {
+                p.angle = 0;
+                p.modified();
+            }).wait(200).call(function () {
+                comboCnt = 1;
+                score = 0;
+                var d = chkDivide();
+                if (d.flg) {
+                    scene.setTimeout(function () {
+                        divide(d.list);
+                    }, 200);
+                }
+                else {
+                    mate();
+                    if (advancePos) {
+                        move(maps[advancePos.y][advancePos.x]);
+                        advancePos = undefined;
+                    }
+                }
+            });
+            //手札をずらす
+            if (nowPanelNum === 0) {
+                nowPanelNum = 1;
+                sprCursor.y = areas[nowPanelNum].y - 5;
+                areas[0].tag = undefined;
+            }
+            else {
+                next();
+            }
+            scene.playSound("se_move");
+        };
         //盤面
         var maps = [];
-        for (var y = 0; y < 6; y++) {
+        var _loop_2 = function (y) {
             maps[y] = [];
-            var _loop_2 = function (x) {
-                var panel = new g.Sprite({
+            var _loop_3 = function (x) {
+                var map = new g.Sprite({
                     scene: scene,
                     x: panelSize * x + 0,
                     y: panelSize * y - 60,
                     src: scene.assets["map"],
                     touchable: true
                 });
-                maps[y][x] = panel;
+                maps[y][x] = map;
                 if (x > 0 && y > 0 && x < 5 && y < 5) {
-                    base.append(panel);
+                    base.append(map);
                 }
                 //クリックイベント
-                panel.pointDown.add(function () {
-                    if (isStop || !scene.isStart)
+                map.pointDown.add(function () {
+                    if (!scene.isStart)
                         return;
-                    if (panel.tag != undefined) {
+                    if (map.tag != undefined) {
+                        //減点
+                        /*
                         scene.addScore(-100);
-                        var p_1 = panel.tag;
-                        p_1.frameNumber = 2;
-                        p_1.modified();
+                        const p = map.tag as Panel;
+                        p.frameNumber = 2;
+                        p.modified();
                         scene.playSound("se_miss");
+                        */
                         return;
                     }
-                    var p = areas[nowPanelNum].tag;
-                    panel.tag = p;
-                    isStop = true;
-                    timeline.create(p).moveTo(panel.x, panel.y, 180).wait(200).call(function () {
-                        comboCnt = 1;
-                        score = 0;
-                        var d = chkDivide();
-                        if (d.flg) {
-                            scene.setTimeout(function () {
-                                divide(d.list);
-                            }, 200);
-                        }
-                        else {
-                            mate();
-                        }
-                    });
-                    //手札をずらす
-                    if (nowPanelNum === 0) {
-                        nowPanelNum = 1;
-                        sprCursor.y = areas[nowPanelNum].y - 5;
-                        areas[0].tag = undefined;
+                    cursorArea.moveTo(map.x, map.y);
+                    cursorArea.show();
+                    cursorArea.modified();
+                    if (isStop) {
+                        //先行入力
+                        advancePos = { x: x, y: y };
                     }
                     else {
-                        next();
+                        move(map);
                     }
-                    scene.playSound("se_move");
                 });
-                panel.pointUp.add(function () {
+                map.pointUp.add(function () {
                     if (isStop || !scene.isStart)
                         return;
-                    if (panel.tag != undefined) {
-                        var p = panel.tag;
+                    if (map.tag != undefined) {
+                        var p = map.tag;
                         p.frameNumber = 0;
                         p.modified();
                         return;
@@ -337,9 +389,13 @@ var MainGame = /** @class */ (function (_super) {
                 });
             };
             for (var x = 0; x < 6; x++) {
-                _loop_2(x);
+                _loop_3(x);
             }
+        };
+        for (var y = 0; y < 6; y++) {
+            _loop_2(y);
         }
+        base.append(cursorArea); //重ね順の関係でここでアペンド
         //枠
         var waku = new g.Sprite({
             scene: scene,
@@ -355,6 +411,16 @@ var MainGame = /** @class */ (function (_super) {
             var panel = new Panel(scene, panelSize);
             panels_bk[i] = panel;
         }
+        //影
+        var shadow = new g.Sprite({
+            scene: scene,
+            src: scene.assets["panel"],
+            width: panelSize,
+            height: panelSize,
+            srcX: panelSize,
+            srcY: panelSize,
+            opacity: 0.1
+        });
         //消したパネルの数
         var sprNum = new g.Sprite({
             scene: scene,
@@ -362,8 +428,8 @@ var MainGame = /** @class */ (function (_super) {
             width: 108,
             height: 40,
             srcY: 0,
-            x: 210,
-            y: 50
+            x: 560,
+            y: 130,
         });
         _this.append(sprNum);
         sprNum.hide();
@@ -382,8 +448,8 @@ var MainGame = /** @class */ (function (_super) {
             width: 108,
             height: 40,
             srcY: 40,
-            x: 210,
-            y: 100
+            x: 560,
+            y: 180
         });
         _this.append(sprCombo);
         sprCombo.hide();
@@ -446,6 +512,10 @@ var MainGame = /** @class */ (function (_super) {
                 base.append(panel);
                 p.tag = panel;
             }
+            advancePos = undefined;
+            cursorArea.hide();
+            if (shadow.parent)
+                shadow.remove();
             isStop = false;
         };
         //リセット
@@ -492,7 +562,7 @@ var Effect = /** @class */ (function (_super) {
             _this.x = panel.x;
             _this.y = panel.y;
             _this.modified();
-            var _loop_3 = function (i) {
+            var _loop_4 = function (i) {
                 var effect = effects[i];
                 effect.x = size * (i % 2);
                 effect.y = size * (Math.floor(i / 2));
@@ -502,7 +572,7 @@ var Effect = /** @class */ (function (_super) {
                 });
             };
             for (var i = 0; i < 4; i++) {
-                _loop_3(i);
+                _loop_4(i);
             }
         };
         return _this;

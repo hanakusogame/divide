@@ -24,7 +24,7 @@ export class MainScene extends g.Scene {
 			"panel","map","waku","cursor","combo","keep",
 			"config", "volume", "test", "glyph72","number_k", "number_b", "number_y", "number_p",
 			"se_start", "se_timeup", "bgm", "se_move", "se_miss","se_hit","se_miss"
-			"biri"];
+			,"biri"];
 		super(param);
 
 		const tl = require("@akashic-extension/akashic-timeline");
@@ -302,7 +302,6 @@ export class MainScene extends g.Scene {
 					});
 
 					game.finish();
-
 					return;
 				}
 
@@ -373,10 +372,11 @@ export class MainScene extends g.Scene {
 				fg.modified();
 
 				finishBase.hide();
-
 				startTime = Date.now();
-
 				game.reset();
+
+				this.playSound("se_start");
+
 			};
 
 		});

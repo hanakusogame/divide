@@ -321,6 +321,7 @@ var MainScene = /** @class */ (function (_super) {
                 finishBase.hide();
                 startTime = Date.now();
                 game.reset();
+                _this.playSound("se_start");
             };
         });
         return _this;
